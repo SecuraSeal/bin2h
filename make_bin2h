@@ -1,0 +1,10 @@
+FILE_NAME=bin2h
+
+if [ -f $FILE_NAME ]; then
+    echo "Removing old $FILE_NAME"
+    rm -f "$FILE_NAME"
+fi
+
+echo "Making new $FILE_NAME"
+
+gcc -Wall -o $FILE_NAME main.c
