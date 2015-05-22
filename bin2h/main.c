@@ -335,7 +335,7 @@ main
     fprintf(fp_out, "#ifndef BLOBHEADER_H\n");
     fprintf(fp_out, "    #define BLOBHEADER_H\n");
     fprintf(fp_out, "\n");
-    fprintf(fp_out, "static const char %s[] = \n", blob_name);
+    fprintf(fp_out, "static FW_SECTION const char %s[] = \n", blob_name);
     fprintf(fp_out, "{\n");
     
     /* process all bytes */
