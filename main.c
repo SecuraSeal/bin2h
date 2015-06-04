@@ -283,6 +283,7 @@ main
     /* local function variables */
     FILE*        fp = NULL;
     long        len = 0;
+    long compress_len = 0;
     char* file_buff = NULL;
     int      status = EXIT_SUCCESS;
     FILE*    fp_out = NULL;
@@ -336,12 +337,12 @@ main
     if(compress)
     {
     	/* compress */
-    	long compress_len;
     	char* compress_buff = (char *)malloc((size_t)len);
     	compress_len = LZ_Compress( (unsigned char*)file_buff, (unsigned char*)compress_buff, len);
     	printf("Compressed %ld to %ld bytes\n", len, compress_len);
+    	/* free original buffer */
     	free(file_buff);
-    	len = compress_len;
+    	/* replace file_buff with compressed buffer */
     	file_buff = compress_buff;
     }
     
@@ -360,12 +361,15 @@ main
     fprintf(fp_out, "#ifndef __%s_h__\n", blob_name);
     fprintf(fp_out, "#define __%s_h__\n", blob_name);
     fprintf(fp_out, "\n");
-    fprintf(fp_out, "static FW_SECTION const bool %s_compress = %s;\n", blob_name, compress ? "true" : "false");
+    fprintf(fp_out, "#define %s_compressed %s\n", blob_name, compress ? "true" : "false");
+    fprintf(fp_out, "#define %s_len %ld\n", blob_name, len);
+	fprintf(fp_out, "#define %s_compress_len %ld\n", blob_name, compress_len);
     fprintf(fp_out, "static FW_SECTION const unsigned char %s[] = \n", blob_name);
     fprintf(fp_out, "{\n");
     
     /* process all bytes */
-    for(i = 1; i < len + 1; i++)
+    long process_len = compress ? compress_len : len;
+    for(i = 1; i < process_len + 1; i++)
     {
         if((i - 1) % 8 == 0)
         {
@@ -374,7 +378,7 @@ main
         
         fprintf(fp_out, "0x%02x", file_buff[i - 1] & 0xFF);
     
-        if(i < len)
+        if(i < process_len)
         {
             fprintf(fp_out, ", ");
         }
