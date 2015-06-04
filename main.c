@@ -3,19 +3,24 @@
 #include <string.h>
 #include <stdbool.h>
 
-const char* VERSION_INFO = "Version 1.0";
+#include "bcl/src/lz.h"
+
+#define VERSION_INFO  "Version 1.1"
+#define MAX_STR_LEN	  1024
 
 const char* DEFAULT_BLOB_NAME = "BLOB";
 
-char*          binary_file = NULL;
-char header_file[1024 + 1] = {0};
-char   blob_name[1024 + 1] = {0};
+char* binary_file = NULL;
+char header_file[MAX_STR_LEN + 1] = {0};
+char   blob_name[MAX_STR_LEN + 1] = {0};
+bool compress = false;
+
 
 void
 printHeader
 (void)
 {
-    printf("bin2h. Binary to C Header file converter. Version 1.0\n");
+    printf("bin2h. Binary to C Header file converter. " VERSION_INFO "\n");
     printf("Copyright @ http://www.mitp0sh.de 2013. All rights reserved.\n");
     printf("\n");
 }
@@ -40,6 +45,7 @@ printCommands
     printf("  -h, --help             display this help and exit\n");
     printf("  -f, --file             [OPTIONAL] - specify location and name of header file\n");
     printf("  -b, --blobname         [OPTIONAL] - use this name as binary blob name\n");
+    printf("  -c, --compress         [OPTIONAL] - compress binary with lz77 (gzip)\n");
     printf("\n");
 }
 void
@@ -69,7 +75,7 @@ void
 printTooLong
 (const char* origin)
 {
-    printf("error - %s is too long! maximum allowed chars - 1024.\n", origin);
+    printf("error - %s is too long!\n", origin);
     printf("\n");
 }
 
@@ -122,6 +128,7 @@ processCommandLine
     bool              unknown = false;
     bool            inTooLong = false;
     char*       tooLongOrigin = NULL;
+    compress = false;
     /* ---------------------------- */
     
     /* scan all commandline parameters */
@@ -142,13 +149,13 @@ processCommandLine
             if(i >= argc) continue;
             
             /* check if too long */
-            if(strlen(current) >= 1024)
+            if(strlen(current) >= MAX_STR_LEN)
             {
                 inTooLong     = true;
                 tooLongOrigin = "header file name";
                 break;
             }
-            strncpy(header_file, current, 1024);
+            strncpy(header_file, current, MAX_STR_LEN);
         }
         else
         if(inB == true)
@@ -159,14 +166,14 @@ processCommandLine
             if(i >= argc) continue;
                 
             /* check if too long */
-            if(strlen(current) >= 1024)
+            if(strlen(current) >= MAX_STR_LEN)
             {
                 inTooLong     = true;
                 tooLongOrigin = "blob name";
                 break;
             }
                 
-            strncpy(blob_name, current, 1024);
+            strncpy(blob_name, current, MAX_STR_LEN);
         }
         else        
         if(current[0] == '-')
@@ -195,6 +202,12 @@ processCommandLine
                strcmp(&current[2], "blobname") == 0)
             {
                 inB = true;
+            }
+            else
+            if((current[1] == 'c' && current[2] == 0) ||
+               strcmp(&current[2], "compress") == 0)
+            {
+                compress = true;
             }
             else
             {
@@ -247,16 +260,16 @@ processCommandLine
     if(blob_name[0] == 0)
     {
         /* copy default value */
-        strncpy(blob_name, DEFAULT_BLOB_NAME, 1024);
+        strncpy(blob_name, DEFAULT_BLOB_NAME, MAX_STR_LEN);
     }
     
     if(header_file[0] == 0)
     {
         /* copy default value */
-        strncpy(header_file, binary_file, 1024);
-        strncat(header_file, "_", 1024);
-        strncat(header_file, blob_name, 1024);
-        strncat(header_file, ".h", 1024);
+        strncpy(header_file, binary_file, MAX_STR_LEN);
+        strncat(header_file, "_", MAX_STR_LEN);
+        strncat(header_file, blob_name, MAX_STR_LEN);
+        strncat(header_file, ".h", MAX_STR_LEN);
     }
 }
 
@@ -319,7 +332,19 @@ main
     
     printf("\n");
     printf("  [OK] - %s - binary successfully read.\n", binary_file);
-        
+    
+    if(compress)
+    {
+    	/* compress */
+    	long compress_len;
+    	char* compress_buff = (char *)malloc((size_t)len);
+    	compress_len = LZ_Compress( (unsigned char*)file_buff, (unsigned char*)compress_buff, len);
+    	printf("Compressed %ld to %ld bytes\n", len, compress_len);
+    	free(file_buff);
+    	len = compress_len;
+    	file_buff = compress_buff;
+    }
+    
     /* create/open output file */
     fp_out = fopen(header_file, "w+b");
     if(fp_out == NULL)
@@ -335,6 +360,7 @@ main
     fprintf(fp_out, "#ifndef __%s_h__\n", blob_name);
     fprintf(fp_out, "#define __%s_h__\n", blob_name);
     fprintf(fp_out, "\n");
+    fprintf(fp_out, "static FW_SECTION const bool %s_compress = %s;\n", blob_name, compress ? "true" : "false");
     fprintf(fp_out, "static FW_SECTION const unsigned char %s[] = \n", blob_name);
     fprintf(fp_out, "{\n");
     

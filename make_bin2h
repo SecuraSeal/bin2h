@@ -7,4 +7,4 @@ fi
 
 echo "Making new $FILE_NAME"
 
-gcc -Wall -o $FILE_NAME main.c
+gcc -Wall -o $FILE_NAME main.c bcl/src/libbcl.a
